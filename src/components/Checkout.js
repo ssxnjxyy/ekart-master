@@ -161,7 +161,7 @@ fetchAddresses();
                   <div className="text-right">
                     
                   
-                    <p className="font-semibold">${(product.cost ).toFixed(2)}</p>
+                    <p className="font-semibold">₹{(product.cost ).toFixed(2)}</p>
                   </div>
                 </div>
               ))}
@@ -178,7 +178,7 @@ fetchAddresses();
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal</span>
-                  <span>${(totalCost)?.toFixed(2)}</span>
+                  <span>₹{(totalCost)?.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping</span>

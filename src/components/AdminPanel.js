@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { DataGrid } from '@mui/x-data-grid';
 import { Button, Dialog, DialogTitle, DialogContent, DialogActions, TextField, Box, Alert } from '@mui/material';
@@ -10,11 +10,15 @@ import { BASE_URL } from '@/apis/baseurl';
 const AdminPanel = () => {
   const [products, setProducts] = useState([]);
   const [open, setOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [error,setError]=useState(null)
+  const [selectedProduct, setSelectedProduct] = useState({
+    dailog:''
+  });
+  const [error,setError]=useState(null);
+  const [file,setFile]=useState(null);
   useEffect(() => {
     fetchProducts();
   }, []);
+  const imgInput=useRef(null);
 
   const fetchProducts = async () => {
     try {
@@ -33,13 +37,14 @@ const AdminPanel = () => {
   };
 
   const handleCreateProduct = async () => {
+    console.log(file)
     try {
       const formData = new FormData();
       formData.append('brand', selectedProduct?.brand );
       formData.append('model', selectedProduct?.model );
       formData.append('price', selectedProduct?.price );
       formData.append('totalPrice', selectedProduct?.totalPrice);
-      formData.append('file',selectedProduct?.file );
+      formData.append('file', file);
       formData.append('title', selectedProduct?.title );
       formData.append('description', selectedProduct?.description );
       formData.append('features', selectedProduct?.features );
@@ -47,7 +52,6 @@ const AdminPanel = () => {
       await axios.post(`${BASE_URL}/api/product/create`, formData, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
           'ngrok-skip-browser-warning':'true'
         }
       });
@@ -66,7 +70,7 @@ const AdminPanel = () => {
       formData.append('model', selectedProduct.model);
       formData.append('price', selectedProduct.price);
       formData.append('totalPrice', selectedProduct.totalPrice);
-      formData.append('file', selectedProduct.file);
+      formData.append('file', file);
       formData.append('title', selectedProduct.title);
       formData.append('description', selectedProduct.description);
       formData.append('features', selectedProduct.features);
@@ -74,7 +78,7 @@ const AdminPanel = () => {
       await axios.post(`${BASE_URL}/api/product/update/${selectedProduct.id}`, formData, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
-    'Content-Type': 'application/json',
+
     'ngrok-skip-browser-warning':'true'
         }
       });
@@ -88,7 +92,20 @@ const AdminPanel = () => {
 
 
   const handleClickOpen = (product) => {
-    setSelectedProduct(product);
+    if(!product){
+      //set dailog as create
+      setSelectedProduct((prevProduct) => ({
+        'dailog': 'create'
+      }));
+    }
+    else{
+      setSelectedProduct((prevProduct) => ({
+        ...product,
+        'dailog': 'update'
+      }));
+     
+
+    }
     setOpen(true);
   };
 
@@ -120,12 +137,21 @@ const AdminPanel = () => {
   const handleInputChange = (event) => {
     const { name, value, files } = event.target;
     if (name === 'file') {
-      const file = files[0];
-      if (file && (file.type === 'image/png' || file.type === 'image/jpeg')) {
-        setSelectedProduct((prevProduct) => ({
-          ...prevProduct,
-          [name]: file
-        }));
+      console.log(files[0],value)
+      const Imagefile = files[0];
+      
+      if (Imagefile.type === 'image/png' || Imagefile.type === 'image/jpeg') {
+
+          const reader = new FileReader()
+          reader.onloadend = () => {
+            setSelectedProduct((prevProduct) => ({
+              ...prevProduct,
+              [name]: reader.result
+            }));
+          }
+          setFile(files[0])
+          reader.readAsDataURL(Imagefile)
+        
       } else {
         alert('Only PNG or JPEG files are allowed.');
       }
@@ -163,6 +189,10 @@ fetch(`${BASE_URL}/api/product/delete/${selectedProduct?.id}`, requestOptions)
 })
   .catch((error) => console.error(error));
   }
+  const handlePhotoUpload = () => {
+    console.log('Photo Upload')
+    imgInput.current.click()
+  }
   return (
     <div style={{ height: '85vh' }} className='flex flex-col gap-5 md:w-[70%] w-full'>
      <div className='flex p-5'>
@@ -175,18 +205,21 @@ fetch(`${BASE_URL}/api/product/delete/${selectedProduct?.id}`, requestOptions)
       <DataGrid rows={products} columns={columns} pageSize={5} className='shadow' rowSelection={false}/>
         </div>
       <Dialog open={open} onClose={handleClose} fullWidth>
-        <DialogTitle>{selectedProduct ? 'Update Product' : 'Create Product'}</DialogTitle>
+        <DialogTitle>{selectedProduct?.dailog=='create' ? 'Create Product' : 'Update Product Details'}</DialogTitle>
         <DialogContent className='flex  gap-3 items-center'>
             <div className='flex flex-col items-center gap-3'>
-            <span className='flex gap-3'><span>Upload Image</span><UploadFile/></span>
+            <Button className='flex gap-3' onClick={handlePhotoUpload}><span>Upload Image</span><UploadFile 
+             
+            /></Button>
      
-            <Image src={selectedProduct?.signedImageUrl} alt='IMAGE' className='p-3 pt-0' width={200} height={200} priority/>
-            <TextField
+            <Image src={selectedProduct?.signedImageUrl||selectedProduct?.file} alt='IMAGE' className='p-3 pt-0' width={200} height={200} priority/>
+            <input
 
         name="file"
         type="file"
         className='hidden'
-        inputProps={{ accept: 'image/png, image/jpeg' }}
+        ref={imgInput}
+        // inputProps={{ accept: 'image/png, image/jpeg' }}
         onChange={handleInputChange}
       />
       <TextField label="Title" name="title" value={selectedProduct?.title} onChange={handleInputChange} />
@@ -204,7 +237,7 @@ fetch(`${BASE_URL}/api/product/delete/${selectedProduct?.id}`, requestOptions)
       </div>
           </DialogContent>
         <DialogActions>
-         <Button onClick={handleDelete} color='error'>Delete</Button>
+         {selectedProduct?.dailog=='update' &&<Button onClick={handleDelete} color='error'>Delete</Button>}
           <Button onClick={handleClose}>Cancel</Button>
           <Button onClick={selectedProduct?.id ? handleUpdateProduct : handleCreateProduct}>
             {selectedProduct?.id ? 'Update' : 'Create'}
